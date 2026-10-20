@@ -1,0 +1,3 @@
+versões
+node -v
+nppm -v
