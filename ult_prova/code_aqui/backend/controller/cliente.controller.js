@@ -11,7 +11,7 @@ const cadastrar = async(req,res) =>{
     }
 
     if(valores.cpf.length !== 11){
-        return res.status(400).json(message:'CPF inválido')
+        return res.status(400).json({message:'CPF inválido'})
     }
     try{
 
@@ -73,6 +73,94 @@ const consultar = async(req,res) =>{
         if(!cliente){
             return res.status(404).json({message:'id não encontrado'})
         }
-        const bytes = cryptoJs.AES.decrypt
+        const bytes = cryptoJs.AES.decrypt(cliente.cpf,CHAVE_SECRETA)
+        console.log('bytes = ',bytes)
+        const cpfDescriptografado = bytes.toString(cryptoJs.enc.Utf8)
+
+        return res.status(200).json({
+            codCliente:cliente.codCliente,
+            nome:cliente.nome,
+            email:cliente.email,
+            cpf:cliente.cpf,
+            endereco:cliente.endereco,
+            telefone:cliente.telefone
+        })
+    }catch(err){
+        return res.status(500).json({message:'Não foi possível buscar'})
     }
 }
+
+const atualizar = async(req,res)=>{
+    const id = req.params.id
+    const valores = req.body
+
+    try{
+        const cliente = await Cliente.findByPk(id)
+        if(!cliente){
+            return res.status(404).json({message:'Código não encontrado'})
+        }
+
+        const dadosAtualizados = {...valores}
+        
+        if(valores.cpf){
+            if(valores.cpf.length !== 11){
+                return res.status(400).json({message:'O cpf deve ter 11 dígitos'})
+            }
+            dadosAtualizados.cpf = cryptoJs.AES.encrypt(valores.cpf,CHAVE_SECRETA).toString()
+        }
+        if(valores.senha){
+            dadosAtualizados.senha = cryptoJs.AES.encrypt(valores.senha,CHAVE_SECRETA).toString()
+        }
+
+        await Cliente.update(dadosAtualizados,{where:{codCliente:id}})
+        return res.status(200).json({message:'Cliente atualizado com sucesso!'})
+    }catch(err){
+        console.error('erro ao atualizar ',err)
+        return res.status(500).json({message:'Erro ao atualizar Cliente'})
+    }
+}
+
+const apagar = async(req,res)=>{
+    const id = req.params.id
+    try{
+        const cliente = await Cliente.findByPk(id)
+        if(!cliente){
+            return res.status(404).json({message:'Não foi possível encontrar o id'})
+        }
+
+        await Cliente.destroy({where:{codCliente:id}})
+        return res.status(200).json({message:'Dados excluídos com sucesso'})
+    }catch(err){
+        return res.status(500).json({message:'Não foi possível apagar'})
+    }
+}
+
+const consultarPorNome = async(req,res)=>{
+    const nome = req.params.nome
+
+    try{
+        const cliente = await Cliente.findOne({where:{nome:nome}})
+
+        if(!cliente){
+            return res.status(404).json({message:'Não foi possível buscar por nome'})
+        }
+
+        const bytes = cryptoJs.AES.decrypt(cliente.cpf, CHAVE_SECRETA)
+        const cpfDescriptografado = bytes.toString(cryptoJs.enc.Utf8)
+
+        return res.status(200).json({
+            codCliente:cliente.codCliente,
+            nome:cliente.nome,
+            email:cliente.email,
+            senha:cliente.senha,
+            cpf:cpfDescriptografado,
+            endereco:cliente.endereco,
+            telefone:cliente.telefone
+        })
+    }catch(err){
+        console.error('erro ao buscar pelo nome')
+        return res.status(500).json({message:'Erro ao consultar cliente por nome!'})
+    }
+}
+
+module.exports = {cadastrar, listar, consultar, atualizar, apagar, consultarPorNome}

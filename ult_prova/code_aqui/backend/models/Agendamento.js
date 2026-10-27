@@ -11,6 +11,10 @@ const Agendamento = db.define('agendamento',{
         type:DataTypes.DATE,
         allowNull:false
     },
+    hora:{
+        type:DataTypes.TIME,
+        allowNull:false
+    },
     tipo:{
         type:DataTypes.ENUM('revisão', 'manutenção', 'instalação'),
         allowNull:false
